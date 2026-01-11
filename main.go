@@ -14,21 +14,19 @@ import (
 
 var verbosePtr *bool
 var userPtr *string
-var UserPtr *string
 var passwordPtr *string
-var PasswordPtr *string
-var paramsPtr *string
+var fieldsLoginPtr *string
 var valuesPtr *string
+var extraFieldsPtr *string
 
 func main() {
 
 	verbosePtr = flag.Bool("v", false, "verbose mode\n")
 	userPtr = flag.String("u", "", "user\n")
-	UserPtr = flag.String("U", "", "user wordlist\n")
 	passwordPtr = flag.String("p", "", "password\n")
-	PasswordPtr = flag.String("P", "", "password wordlist\n")
-	paramsPtr = flag.String("params", "", "params\n")
+	fieldsLoginPtr = flag.String("fields-login", "", "params\n")
 	valuesPtr = flag.String("values", "", "values\n")
+	extraFieldsPtr = flag.String("extra-fields", "", "values\n")
 	flag.Parse()
 	validateFlags()
 
@@ -36,36 +34,27 @@ func main() {
 
 	params["url"] = "http://localhost:9000/teste.php"
 
-	//  -params "username,password,page" -values "^USER^,^PASS^,test" -msg "incorrect"
-	// user=^USER^&password=^PASS^&submit=Login:Login Failed
+	//  -fields-login "username,password" -extra-fields="cookie"  -values="abc123" -msg "incorrect"
 	makeRequest(params)
 }
 
 func makeRequest(params map[string]string) {
 
-	var user string
+	// if *PasswordPtr != "" {
+	// 	file, err := os.Open(*PasswordPtr)
+	// 	if err != nil {
+	// 		log.Fatalf("Error opening file: %s", err)
+	// 	}
 
-	paramsTotal := len(strings.Split(*paramsPtr, ","))
-	valuesTotal := len(strings.Split(*valuesPtr, ","))
+	// 	defer file.Close()
 
-	if paramsTotal != valuesTotal {
-		fmt.Println("Params does not match with values!")
-		os.Exit(1)
-	}
+	// 	scanner := bufio.NewScanner(file)
+	// 	for scanner.Scan() {
+	// 		// line := scanner.Text()
+	// 	}
+	// }
 
-	if *userPtr != "" {
-		user = *userPtr
-	}
-
-	if *UserPtr != "" {
-		user = "test"
-	}
-
-	userParam := strings.Split(*paramsPtr, ",")
-
-	data := url.Values{}
-	data.Set(userParam[0], user)
-	data.Set(userParam[1], "123")
+	data := setParams()
 
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", params["url"], strings.NewReader(data.Encode()))
@@ -99,13 +88,35 @@ func makeRequest(params map[string]string) {
 }
 
 func validateFlags() {
-	if *userPtr != "" && *UserPtr != "" {
-		fmt.Println("You can not use -u and -U flags together")
+
+	paramsTotal := len(strings.Split(*extraFieldsPtr, ","))
+	valuesTotal := len(strings.Split(*valuesPtr, ","))
+
+	if paramsTotal != valuesTotal {
+		fmt.Println("Params does not match with values!")
 		os.Exit(1)
 	}
 
-	if *passwordPtr != "" && *PasswordPtr != "" {
-		fmt.Println("You can not use -p and -P flags together")
+	if *userPtr == "" {
+		fmt.Println("Error: -u or -U flag is required.")
+		flag.Usage()
 		os.Exit(1)
 	}
+
+	if *passwordPtr == "" {
+		fmt.Println("Error: -p flag is required.")
+		flag.Usage()
+		os.Exit(1)
+	}
+}
+
+func setParams() url.Values {
+
+	fieldsLogin := strings.Split(*fieldsLoginPtr, ",")
+
+	data := url.Values{}
+	data.Set(fieldsLogin[0], *userPtr)
+	data.Set(fieldsLogin[1], *passwordPtr)
+
+	return data
 }
